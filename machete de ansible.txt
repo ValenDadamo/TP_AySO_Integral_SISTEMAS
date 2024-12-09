@@ -1,0 +1,69 @@
+	=============
+esto es de docker
+sudo usermod -a -G docker vagrant
+
+sudo systemctl docker enable --now
+==============
+
+Es una herramienta que se usa para automatizar cosas
+
+#Instalar
+sudo apt install -y  ansible
+En una estructura de directorios:
+playbook.yml ---> pone todas la tareas que quiere realizar
+inventory ---> deja el listado de equipos donde me quiero conectar y realizar esas taresas
+
+====================
+ejemplo_01
+ejecucion
+ansible-playbook -i inventory playbook.yml
+(-i para pasar el incventario
+
+te tira la mala
+ssh 127.0.0.1
+te vuelve a tirar la mala 
+ssh-copy-id 127.0.0.1
+(cruzo las claves)
+
+cp inventory /home/vagrant (copio el inventario para tener a mano)
+
+ejemplo_02
+muestra el apache2
+
+ejemplo 03
+# para ejecutar este role 
+ansible-playbook -i tests/inventory tests/test.yml
+
+cuando creo un role automaticamente se crea un directorio
+en task estan las tarteas
+
+ejemplo_04
+#Crear un role
+
+ansible-galaxy role init nuevo_usuario
+
+vim nuevo_usuario/tasks/main.yml
+
+Primer paso
+- name: "Crear un usuario"
+  become: yes   -----> para que se cree con sudo
+  ansible.builtin.user:
+    name: james
+    shell: /bin/bash
+    groups: admins,developers
+    append: yes
+
+Segundo Paso,se pega antes que el usaurio
+- name: Ensure group "somegroup" exists
+  ansible.builtin.group:
+    name: somegroup
+    state: present
+
+Ejecucion (Parado en la carpeta "playbook_pruebas")
+ansible-playbook -i inventory/hosts  playbook.yml
+ansible-playbook -i inventory/hosts  playbook.yml  -t role_01
+ansible-playbook -i inventory/hosts  playbook.yml  -t role_02
+
+tira la mala,hay que arreglarlo
+vim roles/nuevo_usuario/tasks/main.yml
+

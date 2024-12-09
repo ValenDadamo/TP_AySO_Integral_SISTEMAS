@@ -1,0 +1,234 @@
+LVM 
+
+sudo pvcreate /dev/sdc1 #creo Pv
+sudo vgcreate vg_datos /dev/sdc1  #creo Vg
+sudo lvcreate -L +10M vg_datos -n lv_docker #creo Lv
+sudo mkfs.ext4  /dev/mapper/vg_datos-lv_docker #lo formateo
+sudo mount /dev/mapper/vg_datos-lv_docker /var/lib/docker/  #lo monto
+
+
+sudo lvcreate -L +2.5GB vg_datos -n lv_workareas #creo Lv
+sudo mkfs.ext4 /dev/mapper/vg_datos-lv_workareas  #lo formateo
+sudo mount /dev/mapper/vg_datos-lv_workareas /work/ #lo monto
+
+
+sudo vgcreate vg_temp /dev/sdd1   #creo Vg
+sudo lvcreate -L +2.5GB vg_temp -n lv_swap #creo Lv
+sudo mkswap /dev/vg_temp/lv_swap  #lo formateo
+sudo swapon /dev/vg_temp/lv_swap #activamos el swap
+swapon --show #verificamos q este activo
+sudo vim /etc/fstab  #entor a la conf de /etc/fstab  y le agrego /dev/mapper/vg_temp-lv_swap none swap sw 0 0
+
+sudo fdisk /dev/sde
+n
+e
+
+
++1G
+t
+82
+w
+sudo mkswap /dev/sde1
+sudo swapon /dev/sde1
+swapon --show
+sudo vim /etc/fstab
+/dev/sde1 none swap sw 0 0
+
+===========================================
+DOCKER
+
+sudo apt install -y docker #instalamos docker
+sudo usermod -a -G docker $(whoami)    #agregamos usuario a docker
+sudo systemctl enable --now docker     #Pongo el servicio de docker en enable -> (Para que tras un reinicio se levante) #Pongo el servicio de docker en running
+sudo systemctl status docker          #sudo valido el estado del servicio
+
+cd repogit/UTN-FRA_SO_TP-Integral/docker/web
+vim index.html
+ <li>Nombre Grupo: municipalidad-de-la-utn </li>
+            <li>División: 318</li>
+            <li id="examen">Fecha:  <span id="fecha"></span></li>
+            <li>IP Pública: <span id="ip-publica"></span></li>
+            <li></li>
+            <li>Role: (R1) - Nombre: Cristian Apellido: Collante  Legajo: 117642 </li>
+            <li>Role: (R2) - Nombre: Franco Apellido: Aguirre  Legajo: 117583 </li>
+            <li>Role: (R3) - Nombre: Leonel Apellido: Benejú  Legajo: 117741  </li>
+            <li>Role: (R4) - Nombre: Marshall Apellido: Cámara  Legajo: 117613 </li>
+            <li>Role: (R5) - Nombre: Marcos Apellido: Almiron  Legajo: 117601 </li>
+            <li>Role: (R6) - Nombre: Andres Apellido: Benegas  Legajo: 117740 </li>
+
+docker build -t tp-div_318_grupo_municipalidad-de-la-utn .   #creo imagen
+
+#NO HAY ESPACIO
+
+sudo mkdir -p /almacenamiento_para_docker
+
+sudo vim /etc/docker/daemon.json
+y agregamos esto ---> 
+{
+  "data-root": "/almacenamiento_para_docker/"
+}
+
+# sudo systemctl restart docker (por si salta la mala reseteas docker)
+
+# docker system prune -a --volumes (limpiamos el almacenamiento de docker) 
+
+# docker build -t tp-div_318_grupo_municipalidad-de-la-utn .  (volvemos a crear la imagen y funciona)
+
+docker run  -d -p 8080:80 tp-div_318_grupo_municipalidad-de-la-utn    #corro la imagen
+http://192.168.56.4:8080
+docker ps
+
+docker login
+docker tag tp-div_318_grupo_municipalidad-de-la-utn markus2210/tp-div_318_grupo_municipalidad-de-la-utn:latest
+
+docker push <Nombre Usuario Docker>/tp-div_318_grupo_municipalidad-de-la-utn:latest
+
+vim docker-compose.yml #editamos el archivo
+
+sudo apt  install docker-compose  -y
+docker-compose up -d #lo corro
+
+
+==========
+EXTRA
+docker-compose pull  # Para asegurarte de obtener la última versión de la imagen
+docker-compose up -d --build  # Vuelve a construir y ejecutar los contenedores
+=========================
+ANSIBLE
+Lo primero que hay que hacer es ejecutrar el playbook
+sudo apt install ansible -y   #lo instalo
+
+(ssh-copy-id vmHost2) asi cruzo las claves
+
+vim inventory/
+dentro del vim le damos enter a hosts y modificamos loas maquinas virtuales
+
+# Corremos el playbook
+	
+#Una vez que vemos que esta todo en verde comenzamos con los roles
+cd roles
+
+# Creanmos el role Alta_Usuarios
+ansible-galaxy role init Alta_Usuarios
+# Agregamos el role en el vim
+vim ../playbook.yml
+# Copiamos el task de un role en el otro role
+cp TP_INI/tasks/main.yml  Alta_Usuarios/tasks/main.yml
+# bajamos un nivel
+cd ..
+#Corremos de nuevo el role aver si anda bien
+ ansible-playbook -i inventory/hosts playbook.yml
+
+# Copiamos desde el repo de ansible:playbook_pruebas/roles/multi_Pruebas/tasks/prueba_useradd.yml
+
+- name: "Alta de groups Secundarios del usuario "
+  become: yes
+  group:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ GruposToCreate }}"
+  tags:
+    - Alta-Usuarios
+
+- name: "Agregando group Primario del usuario "
+  become: yes
+  group:
+    name: "{{ item.USERNAME }}"
+    state: present
+  with_items: "{{ LIST_USUARIOS }}"
+  tags:
+    - Alta-Usuarios
+
+    
+- name: "Alta y/o Actualizacion del usuario"
+  become: yes
+  user:
+    name: "{{ item.USERNAME }}"
+    password: "{{ item.HASH }}"
+    group: "{{ item.USERNAME }}"
+    groups: "{{item.GROUPS}}"
+    state: present
+    append: yes
+  with_items: "{{ LIST_USUARIOS }}"
+  tags:
+    - Alta-Usuarios
+
+#Y ahora todo eso lo metemos en  vim roles/Alta_Usuarios/tasks/main.yml
+
+#Copiamos todp esde el repo de Ansible:playbook_pruebas/roles/multi_Pruebas/vars/main.yml
+
+
+
+Variable_Vars_main: "valor Variable_Vars_main"
+
+LIST_USUARIOS: 
+    - { USERNAME: "userprueba1", HASH: "$6$W.HASH_FALSO" , GROUPS: "root,wheel"}
+    - { USERNAME: "userprueba2", HASH: "" , GROUPS: "grupo1"}
+    - { USERNAME: "userprueba3", HASH: "" , GROUPS: "grupo1,grupo2,grupo3" }
+    - { USERNAME: "userprueba4", HASH: "" , GROUPS: "grupo1,grupo4,grupo5" }
+
+# Metemos todo en 
+ vim vars/main.yml
+
+#Creamos los grupos enb el mismo vim
+LISTA_GRUPOS: (grupo principal)
+  - G_RI
+  - G_R2	
+  - G_R3
+  - G_R4
+  - G_R5
+  - G_R6
+# Grupo secundario es el nombre del grupo
+
+# Creanmos el role Instala-tools
+ansible-galaxy role init Instala-tools
+# Agregamos el role en el vim
+vim ../playbook.yml
+
+#Desde el repo de Ansible copiamos de la linea 20 a la 27: ejemplo_02/playbook.yml
+- name: "Instalando apache " 
+      become: yes
+      package:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - "{{ LISTA_DE_PROGRAMAS }}"
+
+# Lo metemos en  vim Instala-tools/tasks/main.yml
+# Copio todo desde playbook_pruebas/roles/multi_Pruebas/tasks/prueba_3.yml
+- name: "Rol: TP_INI - Grupo: {{ Nombre_Grupo }}"
+  debug:
+    msg: "Inicio de tareas dentro del Rol: TP_INI"
+
+- debug:
+    msg: "Dentro prueba_3"
+
+- name: "Crear directorios en /tmp/multi_Pruebas_borrame/"
+  file:
+    path: "/tmp/multi_Pruebas_borrame/{{ item }}"
+    state: directory
+    mode: '0775'
+    recurse: yes
+  with_items:
+    - "log"
+    - "config"
+
+- name: "Agrego archivo desde template"
+  template:
+    src: template_01.j2
+    dest: /tmp/multi_Pruebas_borrame/config/archivo.txt
+
+#Lo meto todo en vim roles/TP_INI/tasks/main.yml
+
+
+
+
+
+=========================================
+mkdir -p Bash_script/{alta_usuarios/alta_usuarios.sh},{check_url/check_URL.sh},{alta_usuarios/Lista_Usuarios.txt},{check_url/Lista_URL.txt},{check_url/README.md}
+
+
+
+
+
+ 

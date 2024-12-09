@@ -1,0 +1,52 @@
+sudo apt-get update
+sudo apt-get install tree
+sudo apt-get install git
+mkdir repogit
+ssh-keygen
+cat $HOME/.ssh/*.pub
+
+git config --global user.email "valentindadamo@gmail.com"
+git config --global user.name "ValenDadamo"
+
+git clone https://github.com/upszot/UTN-FRA_SO_Examenes.git
+
+vagrant@VMDAdamo:~/repogit/UTNFRA_SO_1P2C_2024_DAdamo/RTA_SCRIPT_Examen_20241006$
+
+vagrant@VMDAdamo:~/repogit/UTN-FRA_SO_Examenes/202410/_checks$
+
+
+0: Sin permisos
+1: Permiso de ejecución (x)
+2: Permiso de escritura (w)
+3: Escritura y ejecución (wx)
+4: Permiso de lectura (r)
+5: Lectura y ejecución (rx)
+6: Lectura y escritura (rw)
+7: Lectura, escritura y ejecución (rwx)
+
+
+
+
+
+
+# CREAR E INGRESAR A LA CARPETA
+
+git init
+
+git branch -m master main     o     git branch -M main
+
+git config --global user.email "valentindadamo@gmail.com"
+git config --global user.name "ValenDadamo"
+
+git remote add origin https://github.com/ValenDadamo/ParcialVDAdamo.git
+
+# AÑADIR CONTENIDO A LA CARPETA
+
+git status
+
+git add .
+
+git commit -m "feat: "
+
+git push origin main    o    git pull origin main
+
