@@ -1,0 +1,344 @@
+LVM 
+#PRIMERO PARTICIONAMOS LOS DISCOS A LVM
+sudo fdisk <EL PATH DEL DISCO A PARTICIONAR>
+n
+
+
+
+t
+8e
+w
+
+
+sudo pvcreate /dev/sdc1 #creo Pv
+sudo vgcreate vg_datos /dev/sdc1  #creo Vg
+sudo lvcreate -L +10M vg_datos -n lv_docker #creo Lv
+sudo mkfs.ext4  /dev/mapper/vg_datos-lv_docker #lo formateo
+sudo mount /dev/mapper/vg_datos-lv_docker /var/lib/docker/  #lo monto
+
+
+sudo lvcreate -L +2.5GB vg_datos -n lv_workareas #creo Lv
+sudo mkfs.ext4 /dev/mapper/vg_datos-lv_workareas  #lo formateo
+sudo mount /dev/mapper/vg_datos-lv_workareas /work/ #lo monto
+
+
+sudo vgcreate vg_temp /dev/sdd1   #creo Vg
+sudo lvcreate -L +2.5GB vg_temp -n lv_swap #creo Lv
+sudo mkswap /dev/vg_temp/lv_swap  #lo formateo
+sudo swapon /dev/vg_temp/lv_swap #activamos el swap
+swapon --show #verificamos q este activo
+sudo vim /etc/fstab  #entor a la conf de /etc/fstab  y le agrego /dev/mapper/vg_temp-lv_swap none swap sw 0 0
+
+sudo fdisk /dev/sde
+n
+e
+
+
++1G
+t
+82
+w
+sudo mkswap /dev/sde1
+sudo swapon /dev/sde1
+swapon --show
+sudo vim /etc/fstab
+/dev/sde1 none swap sw 0 0
+
+===========================================
+DOCKER
+
+sudo apt install -y docker #instalamos docker
+sudo usermod -a -G docker $(whoami) #agregamos usuario a docker
+sudo systemctl enable --now docker #Pongo el servicio de docker en enable -> (Para que tras un reinicio se levante) #Pongo el servicio de docker en runnig
+sudo systemctl status docker #sudo valido el estado del servicio
+
+cd repogit/UTN-FRA_SO_TP-Integral/docker/web
+vim index.html
+ <li>Nombre Grupo: municipalidad-de-la-utn </li>
+            <li>División: 318</li>
+            <li id="examen">Fecha:  <span id="fecha"></span></li>
+            <li>IP Pública: <span id="ip-publica"></span></li>
+            <li></li>
+            <li>Role: (R1) - Nombre: Cristian Apellido: Collante  Legajo: 117642 </li>
+            <li>Role: (R2) - Nombre: Franco Apellido: Aguirre  Legajo: 117583 </li>
+            <li>Role: (R3) - Nombre: Leonel Apellido: Benejú  Legajo: 117741  </li>
+            <li>Role: (R4) - Nombre: Marshall Apellido: Cámara  Legajo: 117613 </li>
+            <li>Role: (R5) - Nombre: Marcos Apellido: Almiron  Legajo: 117601 </li>
+            <li>Role: (R6) - Nombre: Andres Apellido: Benegas  Legajo: 117740 </li>
+
+docker build -t tp-div_318_grupo_municipalidad-de-la-utn .  #creo image
+#si te tira error ejecuto lo siguiente: 
+# sudo systemctl restart docker (por si salta la mala resetias docker)
+# docker system prune -a --volumes (limpiamos el almacenamiento de docker) 
+# docker build -t markus2210/tp-div_318_grupo_municipalidad-de-la-utn .  (volvemos a crear la imagen y funciona)
+
+docker run  -d -p 8080:80 tp-div_318_grupo_municipalidad-de-la-utn #corro la image
+(el -d no te quedas dentro del contenedor)
+(el -p es el puerto ,el primer puerto es la maquina fija y el segundo el del contenedor)
+
+# AGREGO OTRA CARPETA SIN METERLA EN EL DOCKER FILE
+docker run  -d -p 8080:80 -v ./<CARPETA>:<EL PATH> markus2210/tp-div_318_grupo_municipalidad-de-la-utn
+
+#PARA TIRAR UN COMANDO DENTRO DE UN CONTENEDOR
+docker excec -ti d22 /bin/bash---> me meto al contenedor
+d22(identificas el contaimer,cuando tiras docker ps ahi te lo identifica)
+-ti(una terminal interactiva) 
+# dentro del contenedo pongo vim /usr/share/nginx/html/file/info.txt
+#Y EDITO POR EJEMPLO 
+<h1>Almiron Marcos </h1>
+
+#SINO TAMBIEN 
+docker exec -ti d22 ls -l <PATH DEL DOCKERFILE>
+
+#En vez de verlo desde la pagina web lo miro desde la terminal
+curl localhost:<puerto>
+echo "chau" >> web/file/info.txt ---> meto el chau en info.txt
+
+#INFO DE LA MAQUINA SALE DE  
+grep "model name" /proc/cpuinfo
+
+docker stop <ID del contenedor>(EL ID DEL CONTENEDOR LO OBTENGO DE docker ps) 
+
+==============================================
+==============================================
+#DENTRO DEL DOCKERFILE
+
+#Si quiero que se instalar algo
+RUN apt update && \
+		install -y vim nano htop
+(para que se limpie y la imagen sea mas chiquita) 
+    apt clean all &&\
+    rm -rf /var/cache/apt/*
+#Para meter una carpeta en el docker file
+copy <Nombre de la carpeta> <lugar donde la mando>
+===============================================
+===============================================
+http://192.168.56.4:8080
+===============================================
+docker ps
+
+docker login
+#Genero el TAG
+docker tag tp-div_318_grupo_municipalidad-de-la-utn markus2210/tp-div_318_grupo_municipalidad-de-la-utn:latest
+#Una vez generado el TAG lo pusheo
+docker push markus2210/tp-div_318_grupo_municipalidad-de-la-utn:latest
+
+#Muestra las imagenes empaquetadas
+docker images
+
+vim docker-compose.yml #editamos el archivo
+
+sudo apt  install docker-compose  -y
+docker-compose up -d #lo corro
+==============================================
+EXTRA
+docker-compose pull  # Para asegurarte de obtener la última versión de la imagen
+docker-compose up -d --build  # Vuelve a construir y ejecutar los contenedores
+===============================================
+ANSIBLE
+
+Lo primero que hay que hacer es ejecutrar el playbook
+sudo apt install ansible -y   #lo instalo
+
+(ssh-copy-id vmHost2) asi cruzo las claves
+
+vim ansible/inventory/hosts
+modificamos loas maquinas virtuales
+
+# Corremos el playbook
+ansible-playbook -i inventory/hosts playbook.yml
+#Una vez que vemos que esta todo en verde comenzamos con los roles
+cd roles
+
+# Creanmos el role Alta_Usuarios
+ansible-galaxy role init Alta_Usuarios
+# Agregamos el role en el vim
+vim ../playbook.yml
+# Copiamos el task de un role en el otro role
+cp TP_INI/tasks/main.yml  Alta_Usuarios/tasks/main.yml
+# bajamos un nivel
+cd ..
+==========================================================
+==========================================================
+#Corremos de nuevo el role aver si anda bien
+
+ansible-playbook -i inventory/hosts playbook.yml -l vagrant@192.168.56.4
+
+# Creanmos el role Alta_Usuarios
+ansible-galaxy role
+==========================================================
+==========================================================
+# Copiamos desde el repo de ansible:playbook_pruebas/roles/multi_Pruebas/tasks/prueba_useradd.yml
+- name: get hash password {{ USERNAME }}
+  become: yes
+  local_action: shell grep  {{ USERNAME }} /etc/shadow |awk -F ':' '{print $2}'
+  register: PASSWORD_SHA512
+
+
+- name: "Rol: TP_INI - Grupo: {{ Nombre_Grupo }}"
+  debug:
+    msg: "{{  PASSWORD_SHA512.stdout }}"
+
+- name: "Alta de groups Secundarios del usuario "
+  become: yes
+  group:
+    name: "{{ Nombre_Grupo }}"
+    state: present
+  tags:
+    - Alta-Usuarios
+
+- name: "Agregando group Primario del usuario "
+  become: yes
+  group:
+    name: "{{ item}}"
+    state: present
+  with_items: "{{ LIST_GRUPOS}}"
+  tags:
+    - Alta-Usuarios
+
+    
+- name: "Alta y/o Actualizacion del usuario"
+  become: yes
+  user:
+    name: "{{ item[0] }}"
+    password: "{{ PASSWORD_SHA512.stdout}}"
+    group: "{{ item[1]}}"
+    groups: "{{ Nombre_Grupo }}"
+    state: present
+    append: yes
+  with_items: "{{ LIST_USUARIOS }}"
+  tags:
+    - Alta-Usuarios
+
+#Y ahora todo eso lo metemos en  vim roles/Alta_Usuarios/tasks/main.yml
+
+#Copiamos todo esde el repo de Ansible:playbook_pruebas/roles/multi_Pruebas/vars/main.yml
+
+
+
+Variable_Vars_main: "valor Variable_Vars_main"
+
+LIST_USUARIOS:
+
+    - { USERNAME: "R1_Collante", GROUP: "G_R1" , GROUPS: "municipalidad-de-la-utn"}
+    - { USERNAME: "R2_Aguirre", GROUP: "G_R2" , GROUPS: "municipalidad-de-la-utn"}
+    - { USERNAME: "R3_Beneju", GROUP: "G_R3" , GROUPS: "municipalidad-de-la-utn"}
+    - { USERNAME: "R4_Camara", GROUP: "G_R4" , GROUPS:  "municipalidad-de-la-utn"}
+    - { USERNAME: "R5_Almiron", GROUP: "G_R5" , GROUPS:  "municipalidad-de-la-utn"}
+    - { USERNAME: "R6_Benegas", GROUP: "G_R6" , GROUPS:  "municipalidad-de-la-utn"}
+
+# Metemos todo en 
+ vim vars/main.yml
+
+#Creamos los grupos enb el mismo vim
+LISTA_GRUPOS: (grupo principal)
+  - G_RI
+  - G_R2
+  - G_R3
+  - G_R4
+  - G_R5
+  - G_R6
+
+LISTADO_DE_PROGRAMAS:
+  - htop
+  - tmux
+  - speedtest-cli
+
+# Grupo secundario es el nombre del grupo
+===============================================
+# Creanmos el role Instala-tools
+ansible-galaxy role init Instala-tools
+# Agregamos el role en el vim
+vim ../playbook.yml
+  tasks:
+    - include_role:
+        name: Instala-tools_municipalidad-de-la-utn
+      tags:
+        - Instalador
+
+#Desde el repo de Ansible copiamos de la linea 20 a la 27: ejemplo_02/playbook.yml
+- name: "Instalando apache " 
+      become: yes
+      package:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - "{{ LISTADO_DE_PROGRAMAS }}"
+
+# Lo memtemos en  vim Instala-tools/tasks/main.yml
+# Copio todo desde playbook_pruebas/roles/multi_Pruebas/tasks/prueba_3.yml
+
+- name: "Rol: TP_INI - Grupo: {{ Nombre_Grupo }}"
+  debug:
+    msg: "Inicio de tareas dentro del Rol: TP_INI"
+
+- debug:
+    msg: "Dentro prueba_3"
+
+- name: "Crear directorios en /tmp/multi_Pruebas_borrame/"
+  file:
+    path: "/tmp/multi_Pruebas_borrame/{{ item }}"
+    state: directory
+    mode: '0775'
+    recurse: yes
+  with_items:
+    - "log"
+    - "config"
+
+- name: "Agrego archivo desde template"
+  template:
+    src: template_01.j2
+    dest: /tmp/multi_Pruebas_borrame/config/archivo.txt
+
+#Lo meto todo en vim roles/TP_INI/tasks/main.yml
+
+
+
+---
+=====================================================================
+=====================================================================
+=====================================================================
+mkdir -p Bash_script/{alta_usuarios/alta_usuarios.sh},{check_url/check_URL.sh},{alta_usuarios/Lista_Usuarios.txt},{check_url/Lista_URL.txt},{check_url/README.md}
+grep filtra lineas
+grep filtra columna
+
+
+=====================================================================
+=====================================================================
+=====================================================================
+Bash Script
+
+
+
+https://github.com/JoniBe/TP_AySO_Integral_Las_Mitocondrias
+
+https://github.com/BLUHD823/TP_AySO_Integral_-GrupoPaiva-/tree/main
+
+https://github.com/morenacastillo/TP_AySO_Integral_Grupo4
+
+
+=====================================================================
+=====================================================================
+=====================================================================
+DOCKER
+=====================================================================
+sudo usermod -aG docker vagrant
+newgrp docker
+docker login
+docker ps #MUESTRA IMAGENES CORRIENDO
+docker stop (id de la imagen) #BORRAS UNA IMAGEN
+sudo systemctl restart docker
+docker build -t valendadamo/ilovelinux_colo . #CREAR IMAGEN
+docker push valendadamo/ilovelinux_colo
+
+# Ejecuto la imagen en el puerto indicado y monto carpeta
+docker run -d -p 8081:80 -v /home/vagrant/TP_AySO_Integral_ILoveLinux_Colo/docker/web/file/ valendadamo/ilovelinux_colo
+
+
+
+
+# Reemplazo el contenido del archivo info.txt
+
+grep "name" /proc/cpuinfo | awk '{ print $6}' > /home/vagrant/TP_AySO_Integral_ILoveLinux_Colo/docker/web/file/info.txt
+
+ 

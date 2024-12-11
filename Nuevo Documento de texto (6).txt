@@ -24,6 +24,10 @@ vagrant@VMDAdamo:~/repogit/UTN-FRA_SO_Examenes/202410/_checks$
 6: Lectura y escritura (rw)
 7: Lectura, escritura y ejecución (rwx)
 
+Propietario: El usuario que posee el archivo.
+Grupo: Los usuarios que pertenecen al grupo del archivo.
+Otros: Todos los demás usuarios.
+
 
 
 
